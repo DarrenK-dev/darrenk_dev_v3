@@ -6,6 +6,7 @@ public/
 # tutorials key-pair
 tutorials.pem
 *.pem
+.DS_Store
 
 
 terraform.tfstate
