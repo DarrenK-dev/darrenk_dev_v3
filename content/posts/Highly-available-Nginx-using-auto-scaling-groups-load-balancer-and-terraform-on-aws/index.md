@@ -5,17 +5,17 @@ date: 2022-12-29T20:46:41Z
 draft: false
 # type: hidden
 
-weight: 3
+weight: 1
 # aliases: ["/first"]
-tags: ["first"]
-author: "Me"
+tags: ["git", "version control"]
+author: "DarrenK"
 # author: ["Me", "You"] # multiple authors
 showToc: true
 TocOpen: false
 
 hidemeta: false
 comments: false
-description: "Desc Text."
+description: "Tutorial on git setup and basic usage."
 canonicalURL: "https://canonical.url/to/page"
 disableHLJS: true # to disable highlightjs
 disableShare: false
@@ -29,8 +29,8 @@ ShowWordCount: true
 ShowRssButtonInSectionTermList: true
 UseHugoToc: true
 cover:
-    image: "<image path/url>" # image path/url
-    alt: "<alt text>" # alt text
+    image: "" # image path/url
+    alt: "git" # alt text
     caption: "<text>" # display caption under cover
     relative: false # when using page bundles set this to true
     hidden: true # only hide on current single page
@@ -40,10 +40,10 @@ editPost:
     appendFilePath: true # to append file path to Edit link
 ---
 
-
-# Summary
+## Introduction
 
 In this tutorial we will be using terraform to build out our infrastructure on aws.
+
 
 The goal of this tutorials is to provision a highly available application (simple nginx website serving an index.html file) distributed across two availability zones on aws. The website will be hosted on amazon linux 2 instances and will be provisioned using a launch configuration and auto scaling group. For our clients to access the application we will provision an application load balancer to distribute the traffic in a 'round-robin' approach to one of the running instances, this will offer good availability if one instance becomes inactive or we loose access to an availability zone (because the traffic will be re-directed to the other instance). This tutorial is a good starting point to cover auto scaling groups, load balancers and basic launch configurations. The application is simple by design as the concepts covered in this tutorial are my focus.
 
@@ -51,7 +51,7 @@ The goal of this tutorials is to provision a highly available application (simpl
 I will be breaking down the terraform code into smaller descriptive files. There will be no modules used or created, all code will be written from scratch with the aid of a variables.tf file.
 
 ___
-# 01-Providers.tf
+## 01-Providers.tf
 
 Create a new file called `01-Providers.tf` and enter the following code.
 
@@ -80,7 +80,7 @@ The second block, "provider", specifies the provider configuration for AWS. It s
 Together, these blocks declare that the configuration requires the AWS provider, and it should use the "default" profile in the London region to manage resources in AWS.
 
 ___
-# 02-Variables.tf
+## 02-Variables.tf
 ```
 data "aws_availability_zones" "available" {
   state = "available"
@@ -123,7 +123,7 @@ variable "instance-type" {
 }
 
 variable "Name-Tag" {
-  description = "The Tag with the key of `Name` value. This will hepl identify resources provisioned from this IaC terraform tutorial viewed through the AWS management console."
+  description = "The Tag with the key of `Name` value. This will help identify resources provisioned from this IaC terraform tutorial viewed through the AWS management console."
   type        = string
   default     = "darrenk.dev tutorial"
 }
@@ -135,7 +135,7 @@ The following blocks, "variable", declare variables for the configuration. Each 
 These variables can be used to parameterize the configuration, allowing it to be more flexible and reusable. For example, the "vpc_cidr" variable can be used to specify the CIDR block for a virtual private cloud (VPC) in AWS, while the "ami" variable can be used to specify the Amazon Machine Image (AMI) to use when launching Amazon Elastic Compute Cloud (EC2) instances. We will use all variables stored in this file throughout the tutorial, and if you want to change any you know where to find them - in the `02-Variables.tf` file.
 
 ___
-# 03-VPC.tf
+## 03-VPC.tf
 
 ```
 resource "aws_vpc" "vpc" {
@@ -163,7 +163,7 @@ provider "aws" {
 As you can see we specified the region as "eu-west-2". I've used this region as London is the closest region to me. It's good practice to use variables as it centralizes them (we know where to find them) and we can change them in a single place if required. I mean imagine having to search though 100s of files to change out all the regions if they were hard-coded! Much better to use variables and reference them throughout your code base.
 
 ___
-# 04-InternetGateway.tf
+## 04-InternetGateway.tf
 ```
 resource "aws_internet_gateway" "ig" {
   vpc_id = aws_vpc.vpc.id
@@ -201,7 +201,7 @@ aws_vpc.vpc.id                // add `.id` to the end if we want that resources 
 The block also contains the tags block - this was explained before.
 
 ___
-# 05-RouteTable.tf
+## 05-RouteTable.tf
 ```
 resource "aws_route_table" "rt" {
   vpc_id = aws_vpc.vpc.id
@@ -223,7 +223,7 @@ The block includes several arguments that are used to configure the route table.
 The "route" block specifies a route for the route table. It includes a "cidr_block" argument, which specifies the destination CIDR block for the route, and a "gateway_id" argument, which specifies the ID of the internet gateway to use for the route. In this case, it retrieves the ID of the internet gateway from the "aws_internet_gateway" resource using the "ig.id" attribute. In short the route takes all traffic `0.0.0.0/0` and forwards it to the internet_gateway we defined in `04-InternetGateway.tf` - this is our path to and from the internet.
 
 ___
-# 06-Subnets.tf
+## 06-Subnets.tf
 ```
 resource "aws_subnet" "public_subnet_1" {
   vpc_id                  = aws_vpc.vpc.id
@@ -259,7 +259,7 @@ Each block includes several arguments that are used to configure the subnet.
 In short the code block above will create two subnets in different available availability zones with different cidr_blocks, all resources will be contained within our created VPC and instances launched within **both** subnets will be allocated public ip addresses on launch. We would call these subnets "public subnets".
 
 ___
-# 07-RouteTableAssociation.tf
+## 07-RouteTableAssociation.tf
 ```
 resource "aws_route_table_association" "rt_ass_public_subnet_1" {
   subnet_id      = aws_subnet.public_subnet_1.id
@@ -281,7 +281,7 @@ Each block includes two arguments that are used to configure the route table ass
 These resource blocks create associations between the specified subnets and route table, which means that the subnets will use the routes in the route table to determine how to route traffic. This allows traffic to be directed to the internet gateway, which enables instances in the subnets to communicate with the internet (because remember, we added the `0.0.0.0/0` route to the route table in `05-RouteTable.tf` which directs all traffic through the internet gateway)
 
 ___
-# 08-SecurityGroupWeb.tf
+## 08-SecurityGroupWeb.tf
 ```
 resource "aws_security_group" "web_sg" {
   name   = "web sg"
@@ -338,7 +338,7 @@ We could apply this security group to any resource that accepts a security group
 We could lock-down this security group to specific ip addresses for ssh - this would offer more granular security but falls outside of this tutorials scope.
 
 ___
-# 09-LaunchConfiguration.tf
+## 09-LaunchConfiguration.tf
 ```
 resource "aws_launch_configuration" "lc" {
   name            = "${var.Name-Tag} launch-configration"
@@ -368,7 +368,7 @@ This code defines an AWS resource for creating a launch configuration for an EC2
 - lifecycle block specifies that the instance(s) should be created before it/they are destroyed.
 
 ___
-# 10-AutoScalingGroup.tf
+## 10-AutoScalingGroup.tf
 ```
 resource "aws_autoscaling_group" "asg" {
   name                      = "${var.Name-Tag} autoscaling-group"
@@ -408,7 +408,7 @@ The block includes several arguments that are used to configure the ASG.
 This resource block declares an ASG that maintains a certain number of instances within specified limits, uses the specified launch configuration to launch the instances, and launches the instances in the specified subnets. It also specifies a health check to be used to determine the health of the instances, and it registers the instances with the specified ALB target group. It also adds a "Name" tag to the ASG and the instances launched by the ASG for identification purposes.
 
 ___
-# 11-ApplicationLoadBalancer.tf
+## 11-ApplicationLoadBalancer.tf
 ```
 resource "aws_lb" "alb" {
   name               = "alb"
@@ -432,7 +432,7 @@ The block includes several arguments that are used to configure the ALB.
 - The "subnets" argument specifies the IDs of the subnets in which the ALB should be launched. In this case, it retrieves the IDs of the "public_subnet_1" and "public_subnet_2" subnets using the "public_subnet_1.id" and "public_subnet_2.id" attributes, respectively.
 
 ___
-# 12-TargetGroup.tf
+## 12-TargetGroup.tf
 ```
 resource "aws_alb_target_group" "target_group" {
   name     = "target-group"
@@ -468,7 +468,7 @@ The block includes several arguments that are used to configure the target group
 This resource block declares an ALB target group and specifies the port, protocol, and VPC in which it is created. It also specifies the health check settings for the target group and adds a "Name" tag for identification purposes. The target group is used to route traffic to registered targets such as EC2 instances.
 
 ___
-# 13-AlbListener.tf
+## 13-AlbListener.tf
 ```
 resource "aws_alb_listener" "listener_http" {
   load_balancer_arn = aws_lb.alb.arn
@@ -499,7 +499,7 @@ This resource block declares an ALB listener that listens for HTTP traffic on po
 
 
 ___
-# 14-Outputs.tf
+## 14-Outputs.tf
 ```
 data "aws_lb" "alb" {
   name = "alb"
@@ -531,7 +531,7 @@ alb_public_ip = alb-12345678.us-west-2.elb.amazonaws.com
 ```
 
 ___
-# Summary of Terraform code
+## Summary of Terraform code
 
 We have written the terraform code to provision the following resources on AWS:
 
@@ -551,7 +551,7 @@ This configuration can be used to set up a simple, load-balanced web server infr
 User traffic will be directed in a round-robin way to one of the instances, if we loose an instance or availability zone the autoscaling groups health check will fail and then proceed to provision the desired number of running ec2 instances we have detailed in the `10-AutoScalingGroup.tf` file (`desired = 2`). The load balancer will only forward traffic to healthy instances so there will be little to no disruption to our delivery of the website to our users and they won't notice if one ec2 instance fails. 
 
 ___
-# Implement the terraform code
+## Implement the terraform code
 1. Open a terminal and navigate to the directory where all the above files are saved.
 2. Enter the following commands
 ```
@@ -570,7 +570,7 @@ terraform apply planout
 ```
 - the resources will be provisioned.
 ___
-# Conclusion
+## Conclusion
 
 1. User navigates to the load balancer url and is forwarded to a healthy instance
 2. If we were to lose an availability zone or ec2 instance then users would still be forwarded to the remaining healthy instance
